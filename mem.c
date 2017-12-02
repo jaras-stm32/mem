@@ -7,9 +7,9 @@
 
 #include "mem.h"
 #include <stdio.h>
+#include <string.h>
 
 uint8_t mem[MEM_SIZE] = {0, 0, 0};
-
 
 void *MEM_Alloc(uint16_t size) {
 	uint16_t i = 0;
@@ -55,6 +55,70 @@ void *MEM_Alloc(uint16_t size) {
 
 	}
 	return 0;
+}
+
+void *MEM_Realloc(void *pointer, uint16_t size) {
+	uint8_t *i = pointer -3;
+	if(*i == 0) {
+		return MEM_Alloc(size);
+	}
+	uint16_t len = *(i +1) | (*(i +2) << 8);
+	uint16_t nlen = *(i + len +4) | (*(i + len +5) << 8);
+	if(len > size) {
+		if(nlen == 0) {
+			*(i +1) = size & 0xff;
+			*(i +2) = size >> 8;
+			*(i + size +4) = 0;
+			*(i + size +5) = 0;
+		}
+		else if(len - size > 11) {
+			*(i +1) = size & 0xff;
+			*(i +2) = size >> 8;
+			*(i + size +3) = 0;
+			uint16_t ns = len - size -3;
+			*(i + size +4) = ns & 0xff;
+			*(i + size +5) = ns >> 8;
+		}
+	}
+	if(len < size) {
+		if(*(i + len +3) == 0) {
+			if(nlen == 0) {
+				*(i +1) = size & 0xff;
+				*(i +2) = size >> 8;
+				*(i + size +4) = 0;
+				*(i + size +5) = 0;
+				return pointer;
+			}
+			uint16_t nsize = len + nlen +3;
+			if(nsize < size) {
+				void *p = MEM_Alloc(size);
+				memcpy(p, pointer, len);
+				MEM_Free(pointer);
+				return p;
+			}
+			else {
+				if(nsize - size > 11) {
+					*(i +1) = size & 0xff;
+					*(i +2) = size >> 8;
+					uint16_t ns = nsize - size -3;
+					*(i + size +3) = 0;
+					*(i + size +4) = ns & 0xff;
+					*(i + size +5) = ns >> 8;
+				}
+				else {
+					*(i +1) = nsize & 0xff;
+					*(i +2) = nsize >> 8;
+				}
+			}
+		}
+		else {
+			void *p = MEM_Alloc(size);
+			memcpy(p, pointer, len);
+			MEM_Free(pointer);
+			return p;
+		}
+	}
+	return pointer;
 }
 
 void *MEM_AllocLast(uint16_t size) {

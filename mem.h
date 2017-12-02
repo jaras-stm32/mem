@@ -13,6 +13,7 @@
 #define MEM_SIZE 0x10000
 
 void *MEM_Alloc(uint16_t size);
+void *MEM_Realloc(void *pointer, uint16_t size);
 void MEM_Free(void *pointer);
 
 void *MEM_AllocLast(uint16_t size);
